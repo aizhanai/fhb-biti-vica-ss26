@@ -4,9 +4,9 @@ data "exoscale_template" "ubuntu" {
   name = "Linux Ubuntu 22.04 LTS 64-bit"
 }
 
-# 2. Sicherheitsgruppe (Firewall) definieren
+# 2. Sicherheitsgruppe (Firewall) definieren - NEUER NAME
 resource "exoscale_security_group" "web_sg" {
-  name        = "vica-web-sg"
+  name        = "vica-web-sg-v2"
   description = "Security Group fuer SSH und HTTP Webserver"
 }
 
@@ -36,7 +36,7 @@ resource "exoscale_compute_instance" "web_server" {
   name = "vica-system-details-server"
   type = "standard.medium"
 
-  # Festplattengroeße in GB hinzugefuegt
+  # Festplattengroeße in GB
   disk_size = 10
 
   # Nutzt die ID aus der Datenquelle
