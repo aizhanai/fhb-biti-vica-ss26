@@ -1,4 +1,10 @@
-- path: /opt/webserver/app.py
+#cloud-config
+package_update: true
+packages:
+  - python3
+
+write_files:
+  - path: /opt/webserver/app.py
     owner: root:root
     permissions: '0644'
     content: |
@@ -27,14 +33,14 @@
           def do_GET(self):
               data = self.get_system_details()
               
-              # Endpunkt 1: JSON API (für Zusatzpunkte)
+              # Endpunkt 1: JSON API
               if self.path == '/api':
                   self.send_response(200)
                   self.send_header("Content-type", "application/json")
                   self.end_headers()
                   self.wfile.write(json.dumps(data).encode())
               
-              # Endpunkt 2: HTML Seite (Standard)
+              # Endpunkt 2: HTML Seite
               else:
                   self.send_response(200)
                   self.send_header("Content-type", "text/html")
@@ -56,3 +62,7 @@
       server_address = ('0.0.0.0', 80)
       httpd = HTTPServer(server_address, MyHandler)
       httpd.serve_forever()
+
+runcmd:
+  - mkdir -p /opt/webserver
+  - python3 /opt/webserver/app.py &
