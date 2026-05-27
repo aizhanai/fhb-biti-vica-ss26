@@ -2,99 +2,50 @@
 package_update: true
 package_upgrade: true
 
-# Installiert Python3 für das automatisierte Auslesen der Hardwaredaten
 packages:
   - python3
-  - curl
 
 write_files:
-  - path: /opt/server.py
-    permissions: '0755'
+  - path: /opt/webserver/app.py
     owner: root:root
+    permissions: '0644'
     content: |
-      import http.server
-      import socketserver
-      import json
-      import subprocess
+      from http.server import SimpleHTTPRequestHandler, HTTPServer
       import os
 
-      PORT = 80
-
-      class VicaHandler(http.server.BaseHTTPRequestHandler):
-          def get_system_details(self):
-              # Führt Linux-Befehle aus, um die Hardware-Informationen live zu sammeln
-              try:
-                  ip = subprocess.check_output(["hostname", "-I"]).decode().strip().split()[0]
-              except:
-                  ip = "Nicht verfügbar"
-              
-              kernel = subprocess.check_output(["uname", "-r"]).decode().strip()
-              memory = subprocess.check_output(["free", "-h"]).decode()
-              storage = subprocess.check_output(["df", "-h", "/"]).decode()
-              
-              return {
-                  "ip_adresse": ip,
-                  "kernel_typ": kernel,
-                  "memory": memory,
-                  "storage": storage,
-                  "hypervisor": "KVM via Exoscale",
-                  "filesystem": "ext4"
-              }
-
+      class MyHandler(SimpleHTTPRequestHandler):
           def do_GET(self):
-              data = self.get_system_details()
+              self.send_response(200)
+              self.send_header("Content-type", "text/html; charset=utf-8")
+              self.end_headers()
+              html = "<h1>🚀 VICA Webserver läuft erfolgreich!</h1><p>Infrastruktur via Terraform & GitHub Actions bereitgestellt.</p>"
+              self.wfile.write(html.encode("utf-8"))
 
-              # ZUSATZPUNKTE ENDPUNKT 1: JSON API
-              if self.path == '/api':
-                  self.send_response(200)
-                  self.send_header('Content-Type', 'application/json')
-                  self.end_headers()
-                  self.wfile.write(json.dumps(data, indent=4).encode('utf-8'))
+      # WICHTIG: 0.0.0.0 sorgt dafür, dass Anfragen von AUẞEN akzeptiert werden
+      server_address = ('0.0.0.0', 80)
+      httpd = HTTPServer(server_address, MyHandler)
+      print("Webserver läuft auf Port 80...")
+      httpd.serve_forever()
 
-              # ZUSATZPUNKTE ENDPUNKT 2: HTML Webseite
-              else:
-                  self.send_response(200)
-                  self.send_header('Content-Type', 'text/html; charset=utf-8')
-                  self.end_headers()
-                  
-                  html_content = f"""
-                  <!DOCTYPE html>
-                  <html>
-                  <head>
-                      <title>System Details VM</title>
-                      <style>
-                          body {{ font-family: 'Segoe UI', sans-serif; margin: 50px; background-color: #fafafa; color: #222; }}
-                          .container {{ max-width: 800px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }}
-                          h1 {{ color: #0076FF; margin-top: 0; }}
-                          pre {{ background: #1E1E1E; color: #D4D4D4; padding: 15px; border-radius: 6px; font-family: monospace; }}
-                          .meta-box {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }}
-                          .meta-item {{ background: #f0f0f0; padding: 10px; border-radius: 6px; }}
-                      </style>
-                  </head>
-                  <body>
-                      <div class="container">
-                          <h1>Exoscale VM Technische Details</h1>
-                          <div class="meta-box">
-                              <div class="meta-item"><strong>IP-Adresse:</strong> {data['ip_adresse']}</div>
-                              <div class="meta-item"><strong>Kernel-Typ:</strong> {data['kernel_typ']}</div>
-                              <div class="meta-item"><strong>Hypervisor:</strong> {data['hypervisor']}</div>
-                              <div class="meta-item"><strong>Filesystem:</strong> {data['filesystem']}</div>
-                          </div>
-                          <h3>Memory (Arbeitsspeicher)</h3>
-                          <pre>{data['memory']}</pre>
-                          <h3>Storage (Dateisystem-Größe)</h3>
-                          <pre>{data['storage']}</pre>
-                          <p><a href="/api">Maschinenlesbare JSON-API anzeigen &rarr;</a></p>
-                      </div>
-                  </body>
-                  </html>
-                  """
-                  self.wfile.write(html_content.encode('utf-8'))
+  - path: /etc/systemd/system/vica-web.service
+    owner: root:root
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Python Webserver für Abgabe 2
+      After=network.target
 
-      os.chdir('/opt')
-      with socketserver.TCPServer(("", PORT), VicaHandler) as httpd:
-          httpd.serve_forever()
+      [Service]
+      Type=simple
+      WorkingDirectory=/opt/webserver
+      ExecStart=/usr/bin/python3 app.py
+      Restart=always
 
-# Führt das Python-Skript direkt nach dem Booten im Hintergrund aus
+      [Install]
+      WantedBy=multi-user.target
+
 runcmd:
-  - python3 /opt/server.py > /var/log/vica_server.log 2>&1 &
+  - mkdir -p /opt/webserver
+  - systemctl daemon-reload
+  - systemctl enable vica-web.service
+  - systemctl start vica-web.service
