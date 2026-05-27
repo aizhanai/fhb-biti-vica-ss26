@@ -6,7 +6,7 @@ data "exoscale_template" "ubuntu" {
 
 # 2. Sicherheitsgruppe (Firewall) definieren mit BRANDNEUEM Namen
 resource "exoscale_security_group" "web_sg" {
-  name        = "vica-web-sg-v3"
+  name = "vica-web-sg-v4"
   description = "Security Group fuer SSH und HTTP Webserver"
 }
 
@@ -33,7 +33,7 @@ resource "exoscale_security_group_rule" "http" {
 # 5. Die virtuelle Compute-Instanz erstellen mit BRANDNEUEM Namen
 resource "exoscale_compute_instance" "web_server" {
   zone = var.zone
-  name = "vica-server-v3"
+  name = "vica-server-v4"
   type = "standard.medium"
 
   # Festplattengroeße in GB
