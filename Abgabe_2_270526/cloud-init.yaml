@@ -9,59 +9,31 @@ write_files:
     permissions: '0644'
     content: |
       from http.server import SimpleHTTPRequestHandler, HTTPServer
-      import json
-      import subprocess
-      import platform
+      import json, subprocess, platform
 
       class MyHandler(SimpleHTTPRequestHandler):
-          # Diese Funktion sammelt die geforderten technischen Details
-          def get_system_details(self):
-              try:
-                  storage = subprocess.check_output("df -h / | awk 'NR==2 {print $2\" gesamt, \"$3\" belegt, \"$4\" frei\"}'", shell=True).decode().strip()
-                  memory = subprocess.check_output("free -h | awk 'NR==2 {print $2\" gesamt, \"$3\" belegt, \"$4\" frei\"}'", shell=True).decode().strip()
-              except:
-                  storage, memory = "N/A", "N/A"
-
+          def get_details(self):
               return {
-                  "hostname": platform.node(),
-                  "kernel": platform.release(),
-                  "memory": memory,
-                  "storage": storage,
-                  "hypervisor": "KVM/Exoscale"
+                  "Kernel": platform.release(),
+                  "RAM": subprocess.getoutput("free -h | grep Mem | awk '{print $2}'"),
+                  "Disk": subprocess.getoutput("df -h / | awk 'NR==2 {print $2}'"),
+                  "Hypervisor": "Exoscale KVM"
               }
 
           def do_GET(self):
-              data = self.get_system_details()
-              
-              # Endpunkt 1: JSON API
+              data = self.get_details()
               if self.path == '/api':
                   self.send_response(200)
-                  self.send_header("Content-type", "application/json")
+                  self.send_header('Content-type', 'application/json')
                   self.end_headers()
                   self.wfile.write(json.dumps(data).encode())
-              
-              # Endpunkt 2: HTML Seite
               else:
                   self.send_response(200)
-                  self.send_header("Content-type", "text/html")
+                  self.send_header('Content-type', 'text/html')
                   self.end_headers()
-                  html = f"""
-                  <html><body>
-                  <h1>System Details der VM</h1>
-                  <p><b>Hostname:</b> {data['hostname']}</p>
-                  <p><b>Kernel:</b> {data['kernel']}</p>
-                  <p><b>RAM:</b> {data['memory']}</p>
-                  <p><b>Storage:</b> {data['storage']}</p>
-                  <p><b>Hypervisor:</b> {data['hypervisor']}</p>
-                  <hr>
-                  <a href="/api">JSON API Daten</a>
-                  </body></html>
-                  """
-                  self.wfile.write(html.encode())
+                  self.wfile.write(f"<h1>VM System Details</h1><p>Kernel: {data['Kernel']}</p><p>RAM: {data['RAM']}</p><p>Disk: {data['Disk']}</p><a href='/api'>Daten als JSON API</a>".encode())
 
-      server_address = ('0.0.0.0', 80)
-      httpd = HTTPServer(server_address, MyHandler)
-      httpd.serve_forever()
+      HTTPServer(('0.0.0.0', 80), MyHandler).serve_forever()
 
 runcmd:
   - mkdir -p /opt/webserver
