@@ -1,7 +1,7 @@
-# 1. Datenquelle für das Ubuntu 22.04 LTS Template (Aktualisierter Name)
+# 1. Datenquelle für das Ubuntu 22.04 LTS Template
 data "exoscale_template" "ubuntu" {
-  zoneName = var.zone
-  name     = "Linux Ubuntu 22.04 LTS 64-bit"
+  zone = var.zone
+  name = "Linux Ubuntu 22.04 LTS 64-bit"
 }
 
 # 2. Sicherheitsgruppe (Firewall) definieren
@@ -34,7 +34,7 @@ resource "exoscale_security_group_rule" "http" {
 resource "exoscale_compute_instance" "web_server" {
   zone = var.zone
   name = "vica-system-details-server"
-  type = "standard.medium" # Entspricht den Mindestanforderungen
+  type = "standard.medium"
 
   # Nutzt die ID aus der korrigierten Datenquelle
   template_id = data.exoscale_template.ubuntu.id
