@@ -1,51 +1,58 @@
-#cloud-config
-package_update: true
-package_upgrade: true
-
-packages:
-  - python3
-
-write_files:
-  - path: /opt/webserver/app.py
+- path: /opt/webserver/app.py
     owner: root:root
     permissions: '0644'
     content: |
       from http.server import SimpleHTTPRequestHandler, HTTPServer
-      import os
+      import json
+      import subprocess
+      import platform
 
       class MyHandler(SimpleHTTPRequestHandler):
-          def do_GET(self):
-              self.send_response(200)
-              self.send_header("Content-type", "text/html; charset=utf-8")
-              self.end_headers()
-              html = "<h1>🚀 VICA Webserver läuft erfolgreich!</h1><p>Infrastruktur via Terraform & GitHub Actions bereitgestellt.</p>"
-              self.wfile.write(html.encode("utf-8"))
+          # Diese Funktion sammelt die geforderten technischen Details
+          def get_system_details(self):
+              try:
+                  storage = subprocess.check_output("df -h / | awk 'NR==2 {print $2\" gesamt, \"$3\" belegt, \"$4\" frei\"}'", shell=True).decode().strip()
+                  memory = subprocess.check_output("free -h | awk 'NR==2 {print $2\" gesamt, \"$3\" belegt, \"$4\" frei\"}'", shell=True).decode().strip()
+              except:
+                  storage, memory = "N/A", "N/A"
 
-      # WICHTIG: 0.0.0.0 sorgt dafür, dass Anfragen von AUẞEN akzeptiert werden
+              return {
+                  "hostname": platform.node(),
+                  "kernel": platform.release(),
+                  "memory": memory,
+                  "storage": storage,
+                  "hypervisor": "KVM/Exoscale"
+              }
+
+          def do_GET(self):
+              data = self.get_system_details()
+              
+              # Endpunkt 1: JSON API (für Zusatzpunkte)
+              if self.path == '/api':
+                  self.send_response(200)
+                  self.send_header("Content-type", "application/json")
+                  self.end_headers()
+                  self.wfile.write(json.dumps(data).encode())
+              
+              # Endpunkt 2: HTML Seite (Standard)
+              else:
+                  self.send_response(200)
+                  self.send_header("Content-type", "text/html")
+                  self.end_headers()
+                  html = f"""
+                  <html><body>
+                  <h1>System Details der VM</h1>
+                  <p><b>Hostname:</b> {data['hostname']}</p>
+                  <p><b>Kernel:</b> {data['kernel']}</p>
+                  <p><b>RAM:</b> {data['memory']}</p>
+                  <p><b>Storage:</b> {data['storage']}</p>
+                  <p><b>Hypervisor:</b> {data['hypervisor']}</p>
+                  <hr>
+                  <a href="/api">JSON API Daten</a>
+                  </body></html>
+                  """
+                  self.wfile.write(html.encode())
+
       server_address = ('0.0.0.0', 80)
       httpd = HTTPServer(server_address, MyHandler)
-      print("Webserver läuft auf Port 80...")
       httpd.serve_forever()
-
-  - path: /etc/systemd/system/vica-web.service
-    owner: root:root
-    permissions: '0644'
-    content: |
-      [Unit]
-      Description=Python Webserver für Abgabe 2
-      After=network.target
-
-      [Service]
-      Type=simple
-      WorkingDirectory=/opt/webserver
-      ExecStart=/usr/bin/python3 app.py
-      Restart=always
-
-      [Install]
-      WantedBy=multi-user.target
-
-runcmd:
-  - mkdir -p /opt/webserver
-  - systemctl daemon-reload
-  - systemctl enable vica-web.service
-  - systemctl start vica-web.service
