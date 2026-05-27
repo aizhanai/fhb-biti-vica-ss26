@@ -25,5 +25,6 @@ jobs:
         run: |
           terraform apply -auto-approve \
             -var="exoscale_key=${{ secrets.EXOSCALE_API_KEY }}" \
-            -var="exoscale_secret=${{ secrets.EXOSCALE_API_SECRET }}"
+            -var="exoscale_secret=${{ secrets.EXOSCALE_API_SECRET }}" \
+            -var="zone=at-vie-1"
         working-directory: ./Abgabe_2_270526
