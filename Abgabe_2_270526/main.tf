@@ -1,26 +1,16 @@
-# Ruft die Template-ID für das aktuelle Ubuntu 22.04 LTS Image ab
-data "exoscale_compute_template" "ubuntu" {
-  zone = var.zone
-  name = "Linux Ubuntu 22.04 LTS 64-bit"
+# 1. Datenquelle für das Ubuntu 22.04 LTS Template (Aktualisierter Name)
+data "exoscale_template" "ubuntu" {
+  zoneName = var.zone
+  name     = "Linux Ubuntu 22.04 LTS 64-bit"
 }
 
-# Erstellt die Firewall-Sicherheitsgruppe für die VM
+# 2. Sicherheitsgruppe (Firewall) definieren
 resource "exoscale_security_group" "web_sg" {
   name        = "vica-web-sg"
-  description = "Erlaubt eingehenden Traffic für SSH und HTTP"
+  description = "Security Group fuer SSH und HTTP Webserver"
 }
 
-# Firewall-Regel: Erlaubt Web-Traffic auf Port 80 (HTTP)
-resource "exoscale_security_group_rule" "http" {
-  security_group_id = exoscale_security_group.web_sg.id
-  type              = "INGRESS"
-  protocol          = "TCP"
-  cidr              = "0.0.0.0/0"
-  start_port        = 80
-  end_port          = 80
-}
-
-# Firewall-Regel: Erlaubt SSH-Zugriff auf Port 22 für Administration
+# 3. Firewall-Regel: Port 22 für SSH erlauben
 resource "exoscale_security_group_rule" "ssh" {
   security_group_id = exoscale_security_group.web_sg.id
   type              = "INGRESS"
@@ -30,20 +20,34 @@ resource "exoscale_security_group_rule" "ssh" {
   end_port          = 22
 }
 
-# Instanziiert die eigentliche virtuelle Maschine bei Exoscale
-resource "exoscale_compute_instance" "web_vm" {
-  zone               = var.zone
-  name               = "aizhan-vica-vm"
-  template_id        = data.exoscale_compute_template.ubuntu.id
-  type               = "standard.medium"
+# 4. Firewall-Regel: Port 80 für den Python-Webserver erlauben
+resource "exoscale_security_group_rule" "http" {
+  security_group_id = exoscale_security_group.web_sg.id
+  type              = "INGRESS"
+  protocol          = "TCP"
+  cidr              = "0.0.0.0/0"
+  start_port        = 80
+  end_port          = 80
+}
+
+# 5. Die virtuelle Compute-Instanz erstellen
+resource "exoscale_compute_instance" "web_server" {
+  zone = var.zone
+  name = "vica-system-details-server"
+  type = "standard.medium" # Entspricht den Mindestanforderungen
+
+  # Nutzt die ID aus der korrigierten Datenquelle
+  template_id = data.exoscale_template.ubuntu.id
+
+  # Zuweisung der Firewall
   security_group_ids = [exoscale_security_group.web_sg.id]
 
-  # Cloud-Init Konfiguration wird hier direkt als Datei mitgegeben
+  # Übergabe der Cloud-Init-Konfigurationsdatei
   user_data = file("${path.module}/cloud-init.yaml")
 }
 
-# Gibt die IP-Adresse nach dem automatischen Setup im GitHub Log aus
+# 6. Ausgabe der öffentlichen IP nach dem Deployment
 output "vm_public_ip" {
-  value       = exoscale_compute_instance.web_vm.public_ip_address
-  description = "Die öffentliche IP-Adresse der erstellten Exoscale VM"
+  value       = exoscale_compute_instance.web_server.public_ip_address
+  description = "Die oeffentliche IP-Adresse des Webservers"
 }
