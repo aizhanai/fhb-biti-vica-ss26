@@ -36,7 +36,10 @@ resource "exoscale_compute_instance" "web_server" {
   name = "vica-system-details-server"
   type = "standard.medium"
 
-  # Nutzt die ID aus der korrigierten Datenquelle
+  # Festplattengroeße in GB hinzugefuegt
+  disk_size = 10
+
+  # Nutzt die ID aus der Datenquelle
   template_id = data.exoscale_template.ubuntu.id
 
   # Zuweisung der Firewall
