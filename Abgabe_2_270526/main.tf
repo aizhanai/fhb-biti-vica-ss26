@@ -30,12 +30,7 @@ resource "exoscale_security_group_rule" "http" {
   end_port          = 80
 }
 
-# 5. Eine statische, öffentliche IP-Adresse (Elastic IP) reservieren
-resource "exoscale_ip" "web_public_ip" {
-  zone = var.zone
-}
-
-# 6. Die virtuelle Compute-Instanz erstellen
+# 5. Die virtuelle Compute-Instanz erstellen
 resource "exoscale_compute_instance" "web_server" {
   zone = var.zone
   name = "vica-system-details-server"
@@ -54,14 +49,8 @@ resource "exoscale_compute_instance" "web_server" {
   user_data = file("${path.module}/cloud-init.yaml")
 }
 
-# 7. Die reservierte öffentliche IP fest an die Instanz binden
-resource "exoscale_nic" "web_nic" {
-  compute_instance_id = exoscale_compute_instance.web_server.id
-  ip_address          = exoscale_ip.web_public_ip.ip_address
-}
-
-# 8. Ausgabe der ECHTEN öffentlichen IP nach dem Deployment
+# 6. Ausgabe der öffentlichen IP nach dem Deployment
 output "vm_public_ip" {
-  value       = exoscale_ip.web_public_ip.ip_address
-  description = "Die echte, erreichbare IP-Adresse des Webservers"
+  value       = exoscale_compute_instance.web_server.public_ip_address
+  description = "Die oeffentliche IP-Adresse des Webservers"
 }
