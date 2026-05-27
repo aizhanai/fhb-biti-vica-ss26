@@ -1,7 +1,7 @@
 name: "Terraform Destroy"
 
 on:
-  workflow_dispatch: # Ermöglicht das manuelle Stoppen per Mausklick
+  workflow_dispatch:
 
 jobs:
   destroy:
@@ -9,21 +9,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-  - name: Checkout Source Code
-    uses: actions/checkout@v4
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
 
-  - name: Setup Terraform CLI
-    uses: hashicorp/setup-terraform@v3
-    with:
-      terraform_version: 1.5.7
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
 
-  - name: Terraform Init
-    run: terraform init
-    working-directory: ./Abgabe_2_270526
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./Abgabe_2_270526
 
-  - name: Terraform Destroy (Infrastruktur loeschen)
-    run: |
-      terraform destroy -auto-approve \
-        -var="exoscale_key=${{ secrets.EXOSCALE_API_KEY }}" \
-        -var="exoscale_secret=${{ secrets.EXOSCALE_API_SECRET }}"
-    working-directory: ./Abgabe_2_270526
+      - name: Terraform Destroy (Infrastruktur loeschen)
+        run: |
+          terraform destroy -auto-approve \
+            -var="exoscale_key=${{ secrets.EXOSCALE_API_KEY }}" \
+            -var="exoscale_secret=${{ secrets.EXOSCALE_API_SECRET }}"
+        working-directory: ./Abgabe_2_270526
